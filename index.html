@@ -16,14 +16,10 @@ header{padding:10px;text-align:center;background:#222;}
 .section{display:none;padding:10px}
 .active{display:block}
 textarea{width:100%;height:90px;border-radius:8px;border:none;padding:10px}
-button{margin:5px;padding:12px;border:none;border-radius:10px;background:#ff9800;color:#fff;font-size:16px}
+button{margin:5px;padding:12px;border:none;border-radius:10px;background:#ff9800;color:#fff}
 .card{background:#222;padding:15px;border-radius:12px;margin:10px 0}
 select,input{padding:10px;border-radius:8px;width:100%}
-
-/* 選択状態 */
-.selected{
-  background:#4caf50 !important;
-}
+.selected{background:#4caf50!important;}
 </style>
 </head>
 
@@ -36,20 +32,28 @@ select,input{padding:10px;border-radius:8px;width:100%}
 <select id="person">
 <option>父</option>
 <option>母</option>
+<option>子供</option>
+<option>祖父</option>
+<option>祖母</option>
+<option>兄弟</option>
 <option>配偶者</option>
+<option>義理父</option>
+<option>義理母</option>
+<option>義理祖父</option>
+<option>義理祖母</option>
+<option>義理兄弟</option>
 </select>
 </header>
 
 <!-- API -->
 <div class="card">
-APIキー入力
-<input id="apiKeyInput" type="password" placeholder="APIキー">
+APIキー
+<input id="apiKeyInput" type="password">
 <button onclick="saveKey()">保存</button>
 </div>
 
 <div class="tabs">
 <button onclick="show('home')">ホーム</button>
-<button onclick="show('analysis')">分析</button>
 <button onclick="show('log')">記録</button>
 </div>
 
@@ -57,52 +61,49 @@ APIキー入力
 <div id="setup" class="section active">
 
 <div class="card">
-今の関係はどれですか？<br><br>
-
-<button class="phaseBtn" onclick="setPhase('対立',this)">① 話せるが揉めている</button><br>
-<button class="phaseBtn" onclick="setPhase('距離',this)">② 距離がある</button><br>
-<button class="phaseBtn" onclick="setPhase('疎遠',this)">③ ほぼ連絡なし</button><br>
-<button class="phaseBtn" onclick="setPhase('危険',this)">④ 危険・怖い</button>
-
+関係状態<br>
+<button class="phaseBtn" onclick="setPhase('対立',this)">対立</button>
+<button class="phaseBtn" onclick="setPhase('距離',this)">距離</button>
+<button class="phaseBtn" onclick="setPhase('疎遠',this)">疎遠</button>
+<button class="phaseBtn" onclick="setPhase('危険',this)">危険</button>
 </div>
 
 <div class="card">
-どれくらい続いていますか？<br><br>
-
-<button class="periodBtn" onclick="setPeriod('短期',this)">① 数日〜</button>
-<button class="periodBtn" onclick="setPeriod('中期',this)">② 数週間</button>
-<button class="periodBtn" onclick="setPeriod('長期',this)">③ 数ヶ月〜</button>
-<button class="periodBtn" onclick="setPeriod('超長期',this)">④ 半年以上</button>
-
+期間<br>
+<button class="periodBtn" onclick="setPeriod('短期',this)">短期</button>
+<button class="periodBtn" onclick="setPeriod('中期',this)">中期</button>
+<button class="periodBtn" onclick="setPeriod('長期',this)">長期</button>
 </div>
 
-<button onclick="startApp()">はじめる</button>
+<div class="card">
+連絡状況<br>
+<button class="contactBtn" onclick="setContact('普通',this)">普通</button>
+<button class="contactBtn" onclick="setContact('少ない',this)">少ない</button>
+<button class="contactBtn" onclick="setContact('無視',this)">無視</button>
+</div>
+
+<div class="card">
+目的<br>
+<button class="goalBtn" onclick="setGoal('修復',this)">修復</button>
+<button class="goalBtn" onclick="setGoal('改善',this)">改善</button>
+<button class="goalBtn" onclick="setGoal('距離',this)">距離</button>
+</div>
+
+<button onclick="startApp()">開始</button>
 
 </div>
 
 <!-- ホーム -->
 <div id="home" class="section">
 
-<div>
-<button onclick="setMood(2)">🙂</button>
-<button onclick="setMood(1)">😐</button>
-<button onclick="setMood(0)">😢</button>
-</div>
+<input type="file" onchange="loadImage(event)">
+<textarea id="input"></textarea>
 
-<input type="file" accept="image/*" onchange="loadImage(event)">
-
-<textarea id="input" placeholder="出来事・LINE"></textarea>
-
-<button onclick="analyze()">徹子に相談する</button>
-<button onclick="check()">送る前に徹子に確認</button>
+<button onclick="analyze()">相談</button>
+<button onclick="check()">送信チェック</button>
 
 <div id="result" class="card"></div>
 
-</div>
-
-<!-- 分析 -->
-<div id="analysis" class="section">
-<div id="detail" class="card"></div>
 </div>
 
 <!-- 記録 -->
@@ -112,17 +113,18 @@ APIキー入力
 </div>
 
 <script>
-let mood=1;
-let phase="";
-let period="";
-let chart;
 let API_KEY="";
+let chart;
+
+let state={
+ phase:"",period:"",contact:"",goal:""
+};
 
 // API
 function saveKey(){
  API_KEY=document.getElementById("apiKeyInput").value;
  localStorage.setItem("apiKey",API_KEY);
- alert("保存しました");
+ alert("保存");
 }
 
 window.onload=function(){
@@ -132,25 +134,20 @@ window.onload=function(){
  showHistory();
 };
 
-// 選択UI付き
-function setPhase(p,btn){
- phase=p;
- document.querySelectorAll(".phaseBtn").forEach(b=>b.classList.remove("selected"));
+// 選択
+function select(cls,btn){
+ document.querySelectorAll("."+cls).forEach(b=>b.classList.remove("selected"));
  btn.classList.add("selected");
 }
 
-function setPeriod(p,btn){
- period=p;
- document.querySelectorAll(".periodBtn").forEach(b=>b.classList.remove("selected"));
- btn.classList.add("selected");
-}
-
-function setMood(m){mood=m;}
+function setPhase(v,b){state.phase=v;select("phaseBtn",b);}
+function setPeriod(v,b){state.period=v;select("periodBtn",b);}
+function setContact(v,b){state.contact=v;select("contactBtn",b);}
+function setGoal(v,b){state.goal=v;select("goalBtn",b);}
 
 function startApp(){
- if(!phase||!period){alert("選択してください");return;}
- document.getElementById("setup").classList.remove("active");
- document.getElementById("home").classList.add("active");
+ if(!state.phase||!state.period){alert("選択");return;}
+ show("home");
 }
 
 function show(id){
@@ -160,18 +157,14 @@ function show(id){
 
 // OCR
 function loadImage(e){
- const file=e.target.files[0];
- document.getElementById("result").textContent="読み取り中...";
- Tesseract.recognize(file,'jpn+eng')
- .then(({data:{text}})=>{
-  document.getElementById("input").value=text;
-  document.getElementById("result").textContent="読み取り完了";
+ Tesseract.recognize(e.target.files[0],'jpn').then(r=>{
+  document.getElementById("input").value=r.data.text;
  });
 }
 
 // AI
 async function callAI(prompt){
- if(!API_KEY){return "APIキーを入力してください";}
+ if(!API_KEY)return "APIキー未入力";
  try{
   const res=await fetch("https://api.openai.com/v1/chat/completions",{
    method:"POST",
@@ -182,23 +175,49 @@ async function callAI(prompt){
    body:JSON.stringify({
     model:"gpt-5.3",
     messages:[
-     {role:"system",content:"あなたは徹子の関係修復AI。優しく現実的に助言してください"},
+     {role:"system",content:"家族関係修復AI"},
      {role:"user",content:prompt}
     ]
    })
   });
-  const data=await res.json();
-  return data.choices?.[0]?.message?.content||"エラー";
- }catch(e){
-  return "通信エラー";
- }
+  let d=await res.json();
+  return d.choices?.[0]?.message?.content||"エラー";
+ }catch{return "通信エラー";}
+}
+
+// 分析
+async function analyze(){
+ let text=document.getElementById("input").value;
+ let person=document.getElementById("person").value;
+
+ document.getElementById("result").textContent="考え中…";
+
+ let res=await callAI(`
+人物:${person}
+状態:${state.phase}
+期間:${state.period}
+連絡:${state.contact}
+目的:${state.goal}
+内容:${text}
+`);
+
+ document.getElementById("result").textContent=res;
+ saveLog(text);
+}
+
+// チェック
+async function check(){
+ let text=document.getElementById("input").value;
+ let res=await callAI("送信していい？:"+text);
+ document.getElementById("result").textContent=res;
 }
 
 // 保存
-function saveLog(score,text){
+function saveLog(text){
  let logs=JSON.parse(localStorage.getItem("logs")||"[]");
- logs.push({date:new Date().toLocaleDateString(),score,text});
+ logs.push({date:new Date().toLocaleDateString(),text});
  localStorage.setItem("logs",JSON.stringify(logs));
+ drawChart();showHistory();
 }
 
 // グラフ
@@ -206,10 +225,10 @@ function drawChart(){
  let logs=JSON.parse(localStorage.getItem("logs")||"[]");
  if(chart) chart.destroy();
  chart=new Chart(document.getElementById("chart"),{
-  type:'line',
+  type:"line",
   data:{
    labels:logs.map(l=>l.date),
-   datasets:[{label:'関係',data:logs.map(l=>l.score)}]
+   datasets:[{data:logs.map((_,i)=>i+1)}]
   }
  });
 }
@@ -219,39 +238,6 @@ function showHistory(){
  let logs=JSON.parse(localStorage.getItem("logs")||"[]");
  document.getElementById("history").innerHTML=
  logs.map(l=>`<div class="card">${l.date}<br>${l.text}</div>`).join("");
-}
-
-// 分析
-async function analyze(){
- let text=document.getElementById("input").value;
-
- document.getElementById("result").textContent="少し整理しています…";
-
- let res=await callAI(`
-関係状態:${phase}
-期間:${period}
-気分:${mood}
-内容:${text}
-`);
-
- document.getElementById("result").textContent="大丈夫、少しずつ整えていきましょう\n\n"+res;
- document.getElementById("detail").textContent=res;
-
- let score=50+(mood==2?2:-2);
- saveLog(score,text);
- drawChart();
- showHistory();
-}
-
-// チェック
-async function check(){
- let text=document.getElementById("input").value;
-
- document.getElementById("result").textContent="確認しています…";
-
- let res=await callAI(`この文章を送るべきか判断:${text}`);
-
- document.getElementById("result").textContent=res;
 }
 </script>
 
