@@ -30,18 +30,10 @@ select,input{padding:10px;border-radius:8px;width:100%}
 <small>少しずつ整えていきましょう</small><br>
 
 <select id="person">
-<option>父</option>
-<option>母</option>
-<option>子供</option>
-<option>祖父</option>
-<option>祖母</option>
-<option>兄弟</option>
-<option>配偶者</option>
-<option>義理父</option>
-<option>義理母</option>
-<option>義理祖父</option>
-<option>義理祖母</option>
-<option>義理兄弟</option>
+<option>父</option><option>母</option><option>子供</option>
+<option>祖父</option><option>祖母</option><option>兄弟</option>
+<option>配偶者</option><option>義理父</option><option>義理母</option>
+<option>義理祖父</option><option>義理祖母</option><option>義理兄弟</option>
 </select>
 </header>
 
@@ -90,11 +82,51 @@ APIキー
 </div>
 
 <button onclick="startApp()">開始</button>
-
 </div>
 
 <!-- ホーム -->
 <div id="home" class="section">
+
+<button onclick="toggleDetail()">詳細入力ON/OFF</button>
+
+<div id="detailArea" style="display:none">
+
+<div class="card">
+相手の反応<br>
+<button onclick="setDetail('reaction','普通',this)">普通</button>
+<button onclick="setDetail('reaction','冷たい',this)">冷たい</button>
+<button onclick="setDetail('reaction','無視',this)">無視</button>
+</div>
+
+<div class="card">
+相手タイプ<br>
+<button onclick="setDetail('type','理性的',this)">理性的</button>
+<button onclick="setDetail('type','感情的',this)">感情的</button>
+<button onclick="setDetail('type','頑固',this)">頑固</button>
+</div>
+
+<div class="card">
+自分の気持ち<br>
+<button onclick="setDetail('emotion','冷静',this)">冷静</button>
+<button onclick="setDetail('emotion','不安',this)">不安</button>
+<button onclick="setDetail('emotion','怒り',this)">怒り</button>
+</div>
+
+<div class="card">
+衝動<br>
+<button onclick="setDetail('impulse','なし',this)">なし</button>
+<button onclick="setDetail('impulse','少し',this)">少し</button>
+<button onclick="setDetail('impulse','強い',this)">強い</button>
+</div>
+
+<div class="card">
+自分性格<br>
+<button onclick="setDetail('self','冷静',this)">冷静</button>
+<button onclick="setDetail('self','感情的',this)">感情的</button>
+<button onclick="setDetail('self','我慢',this)">我慢</button>
+</div>
+
+</div>
 
 <input type="file" onchange="loadImage(event)">
 <textarea id="input"></textarea>
@@ -115,9 +147,11 @@ APIキー
 <script>
 let API_KEY="";
 let chart;
+let detailMode=false;
 
 let state={
- phase:"",period:"",contact:"",goal:""
+ phase:"",period:"",contact:"",goal:"",
+ reaction:"",type:"",emotion:"",impulse:"",self:""
 };
 
 // API
@@ -130,8 +164,7 @@ function saveKey(){
 window.onload=function(){
  API_KEY=localStorage.getItem("apiKey")||"";
  document.getElementById("apiKeyInput").value=API_KEY;
- drawChart();
- showHistory();
+ drawChart();showHistory();
 };
 
 // 選択
@@ -144,6 +177,18 @@ function setPhase(v,b){state.phase=v;select("phaseBtn",b);}
 function setPeriod(v,b){state.period=v;select("periodBtn",b);}
 function setContact(v,b){state.contact=v;select("contactBtn",b);}
 function setGoal(v,b){state.goal=v;select("goalBtn",b);}
+
+function setDetail(k,v,b){
+ state[k]=v;
+ let p=b.parentElement;
+ p.querySelectorAll("button").forEach(x=>x.classList.remove("selected"));
+ b.classList.add("selected");
+}
+
+function toggleDetail(){
+ detailMode=!detailMode;
+ document.getElementById("detailArea").style.display = detailMode?"block":"none";
+}
 
 function startApp(){
  if(!state.phase||!state.period){alert("選択");return;}
@@ -198,6 +243,11 @@ async function analyze(){
 期間:${state.period}
 連絡:${state.contact}
 目的:${state.goal}
+反応:${state.reaction}
+性格:${state.type}
+感情:${state.emotion}
+衝動:${state.impulse}
+自分:${state.self}
 内容:${text}
 `);
 
