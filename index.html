@@ -129,12 +129,19 @@ APIキー
 </div>
 
 <input type="file" onchange="loadImage(event)">
-<textarea id="input"></textarea>
+<textarea id="input" placeholder="出来事・LINE"></textarea>
 
 <button onclick="analyze()">相談</button>
 <button onclick="check()">送信チェック</button>
 
 <div id="result" class="card"></div>
+
+<!-- 日記 -->
+<div class="card">
+日記（その日の気持ち）
+<textarea id="diary"></textarea>
+<button onclick="saveDiary()">日記保存</button>
+</div>
 
 </div>
 
@@ -167,7 +174,7 @@ window.onload=function(){
  drawChart();showHistory();
 };
 
-// 選択
+// UI選択
 function select(cls,btn){
  document.querySelectorAll("."+cls).forEach(b=>b.classList.remove("selected"));
  btn.classList.add("selected");
@@ -230,6 +237,18 @@ async function callAI(prompt){
  }catch{return "通信エラー";}
 }
 
+// スコア計算
+function calcScore(){
+ let score=50;
+ if(state.phase==="対立") score-=10;
+ if(state.phase==="疎遠") score-=15;
+ if(state.phase==="危険") score-=30;
+ if(state.goal==="修復") score+=5;
+ if(state.emotion==="冷静") score+=5;
+ if(state.emotion==="怒り") score-=10;
+ return score;
+}
+
 // 分析
 async function analyze(){
  let text=document.getElementById("input").value;
@@ -243,16 +262,24 @@ async function analyze(){
 期間:${state.period}
 連絡:${state.contact}
 目的:${state.goal}
-反応:${state.reaction}
-性格:${state.type}
-感情:${state.emotion}
-衝動:${state.impulse}
-自分:${state.self}
 内容:${text}
 `);
 
  document.getElementById("result").textContent=res;
- saveLog(text);
+
+ let score=calcScore();
+ saveLog("相談:"+text,score);
+}
+
+// 日記保存
+function saveDiary(){
+ let text=document.getElementById("diary").value;
+ if(!text)return;
+
+ let score=50;
+ saveLog("日記:"+text,score);
+
+ document.getElementById("diary").value="";
 }
 
 // チェック
@@ -263,9 +290,13 @@ async function check(){
 }
 
 // 保存
-function saveLog(text){
+function saveLog(text,score){
  let logs=JSON.parse(localStorage.getItem("logs")||"[]");
- logs.push({date:new Date().toLocaleDateString(),text});
+ logs.push({
+  date:new Date().toLocaleDateString(),
+  text:text,
+  score:score
+ });
  localStorage.setItem("logs",JSON.stringify(logs));
  drawChart();showHistory();
 }
@@ -278,7 +309,10 @@ function drawChart(){
   type:"line",
   data:{
    labels:logs.map(l=>l.date),
-   datasets:[{data:logs.map((_,i)=>i+1)}]
+   datasets:[{
+     label:"関係スコア",
+     data:logs.map(l=>l.score)
+   }]
   }
  });
 }
@@ -287,7 +321,13 @@ function drawChart(){
 function showHistory(){
  let logs=JSON.parse(localStorage.getItem("logs")||"[]");
  document.getElementById("history").innerHTML=
- logs.map(l=>`<div class="card">${l.date}<br>${l.text}</div>`).join("");
+ logs.map(l=>`
+  <div class="card">
+  ${l.date}<br>
+  スコア:${l.score}<br>
+  ${l.text}
+  </div>
+ `).join("");
 }
 </script>
 
