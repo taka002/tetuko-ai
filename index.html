@@ -99,31 +99,10 @@ APIキー
 </div>
 
 <div class="card">
-相手タイプ<br>
-<button onclick="setDetail('type','理性的',this)">理性的</button>
-<button onclick="setDetail('type','感情的',this)">感情的</button>
-<button onclick="setDetail('type','頑固',this)">頑固</button>
-</div>
-
-<div class="card">
 自分の気持ち<br>
 <button onclick="setDetail('emotion','冷静',this)">冷静</button>
 <button onclick="setDetail('emotion','不安',this)">不安</button>
 <button onclick="setDetail('emotion','怒り',this)">怒り</button>
-</div>
-
-<div class="card">
-衝動<br>
-<button onclick="setDetail('impulse','なし',this)">なし</button>
-<button onclick="setDetail('impulse','少し',this)">少し</button>
-<button onclick="setDetail('impulse','強い',this)">強い</button>
-</div>
-
-<div class="card">
-自分性格<br>
-<button onclick="setDetail('self','冷静',this)">冷静</button>
-<button onclick="setDetail('self','感情的',this)">感情的</button>
-<button onclick="setDetail('self','我慢',this)">我慢</button>
 </div>
 
 </div>
@@ -138,7 +117,7 @@ APIキー
 
 <!-- 日記 -->
 <div class="card">
-日記（その日の気持ち）
+日記（感情記録）
 <textarea id="diary"></textarea>
 <button onclick="saveDiary()">日記保存</button>
 </div>
@@ -158,23 +137,24 @@ let detailMode=false;
 
 let state={
  phase:"",period:"",contact:"",goal:"",
- reaction:"",type:"",emotion:"",impulse:"",self:""
+ reaction:"",emotion:""
 };
 
-// API
+// API保存
 function saveKey(){
  API_KEY=document.getElementById("apiKeyInput").value;
  localStorage.setItem("apiKey",API_KEY);
  alert("保存");
 }
 
+// 起動
 window.onload=function(){
  API_KEY=localStorage.getItem("apiKey")||"";
  document.getElementById("apiKeyInput").value=API_KEY;
  drawChart();showHistory();
 };
 
-// UI選択
+// UI
 function select(cls,btn){
  document.querySelectorAll("."+cls).forEach(b=>b.classList.remove("selected"));
  btn.classList.add("selected");
@@ -187,8 +167,7 @@ function setGoal(v,b){state.goal=v;select("goalBtn",b);}
 
 function setDetail(k,v,b){
  state[k]=v;
- let p=b.parentElement;
- p.querySelectorAll("button").forEach(x=>x.classList.remove("selected"));
+ b.parentElement.querySelectorAll("button").forEach(x=>x.classList.remove("selected"));
  b.classList.add("selected");
 }
 
@@ -217,6 +196,7 @@ function loadImage(e){
 // AI
 async function callAI(prompt){
  if(!API_KEY)return "APIキー未入力";
+
  try{
   const res=await fetch("https://api.openai.com/v1/chat/completions",{
    method:"POST",
@@ -225,28 +205,36 @@ async function callAI(prompt){
     "Authorization":"Bearer "+API_KEY
    },
    body:JSON.stringify({
-    model:"gpt-5.3",
+    model:"gpt-4o-mini",
     messages:[
-     {role:"system",content:"家族関係修復AI"},
+     {role:"system",content:"家族関係修復AIとして優しく現実的に助言"},
      {role:"user",content:prompt}
     ]
    })
   });
-  let d=await res.json();
-  return d.choices?.[0]?.message?.content||"エラー";
- }catch{return "通信エラー";}
+
+  const data=await res.json();
+
+  if(!res.ok){
+    return "エラー詳細:\n"+JSON.stringify(data,null,2);
+  }
+
+  return data.choices?.[0]?.message?.content||"AI応答なし";
+
+ }catch(e){
+  return "通信エラー:"+e.message;
+ }
 }
 
-// スコア計算
+// スコア
 function calcScore(){
- let score=50;
- if(state.phase==="対立") score-=10;
- if(state.phase==="疎遠") score-=15;
- if(state.phase==="危険") score-=30;
- if(state.goal==="修復") score+=5;
- if(state.emotion==="冷静") score+=5;
- if(state.emotion==="怒り") score-=10;
- return score;
+ let s=50;
+ if(state.phase==="対立")s-=10;
+ if(state.phase==="疎遠")s-=15;
+ if(state.phase==="危険")s-=30;
+ if(state.emotion==="怒り")s-=10;
+ if(state.emotion==="冷静")s+=5;
+ return s;
 }
 
 // 分析
@@ -254,7 +242,7 @@ async function analyze(){
  let text=document.getElementById("input").value;
  let person=document.getElementById("person").value;
 
- document.getElementById("result").textContent="考え中…";
+ document.getElementById("result").textContent="分析中…";
 
  let res=await callAI(`
 人物:${person}
@@ -267,36 +255,32 @@ async function analyze(){
 
  document.getElementById("result").textContent=res;
 
- let score=calcScore();
- saveLog("相談:"+text,score);
+ saveLog("相談:"+text,calcScore());
 }
 
-// 日記保存
+// 日記
 function saveDiary(){
  let text=document.getElementById("diary").value;
  if(!text)return;
 
- let score=50;
- saveLog("日記:"+text,score);
+ let now=new Date();
+ let time=now.toLocaleString();
+
+ saveLog("日記:"+text,50,time);
 
  document.getElementById("diary").value="";
 }
 
-// チェック
-async function check(){
- let text=document.getElementById("input").value;
- let res=await callAI("送信していい？:"+text);
- document.getElementById("result").textContent=res;
-}
-
 // 保存
-function saveLog(text,score){
+function saveLog(text,score,time=null){
  let logs=JSON.parse(localStorage.getItem("logs")||"[]");
+
  logs.push({
-  date:new Date().toLocaleDateString(),
+  date:time || new Date().toLocaleDateString(),
   text:text,
   score:score
  });
+
  localStorage.setItem("logs",JSON.stringify(logs));
  drawChart();showHistory();
 }
@@ -304,14 +288,16 @@ function saveLog(text,score){
 // グラフ
 function drawChart(){
  let logs=JSON.parse(localStorage.getItem("logs")||"[]");
+
  if(chart) chart.destroy();
+
  chart=new Chart(document.getElementById("chart"),{
   type:"line",
   data:{
    labels:logs.map(l=>l.date),
    datasets:[{
-     label:"関係スコア",
-     data:logs.map(l=>l.score)
+    label:"関係スコア",
+    data:logs.map(l=>l.score || 50)
    }]
   }
  });
@@ -320,12 +306,13 @@ function drawChart(){
 // 履歴
 function showHistory(){
  let logs=JSON.parse(localStorage.getItem("logs")||"[]");
+
  document.getElementById("history").innerHTML=
  logs.map(l=>`
   <div class="card">
-  ${l.date}<br>
-  スコア:${l.score}<br>
-  ${l.text}
+   ${l.date}<br>
+   スコア:${l.score}<br>
+   ${l.text}
   </div>
  `).join("");
 }
