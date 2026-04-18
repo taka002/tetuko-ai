@@ -18,7 +18,7 @@ header{padding:10px;text-align:center;background:#222;}
 textarea{width:100%;height:90px;border-radius:8px;border:none;padding:10px}
 button{margin:5px;padding:10px;border:none;border-radius:8px;background:#ff9800;color:#fff}
 .card{background:#222;padding:10px;border-radius:10px;margin:10px 0}
-select{padding:8px;border-radius:8px}
+select,input{padding:8px;border-radius:8px;width:100%}
 </style>
 </head>
 
@@ -34,6 +34,13 @@ select{padding:8px;border-radius:8px}
 <option>配偶者</option>
 </select>
 </header>
+
+<!-- APIキー入力 -->
+<div class="card">
+APIキー入力
+<input id="apiKeyInput" type="password" placeholder="APIキー">
+<button onclick="saveKey()">保存</button>
+</div>
 
 <div class="tabs">
 <button onclick="show('home')">ホーム</button>
@@ -98,8 +105,22 @@ let mood=1;
 let phase="";
 let period="";
 let chart;
+let API_KEY="";
 
-const API_KEY = prompt("APIキーを入力してください");
+// API保存
+function saveKey(){
+ API_KEY=document.getElementById("apiKeyInput").value;
+ localStorage.setItem("apiKey",API_KEY);
+ alert("保存しました");
+}
+
+// 起動時読み込み
+window.onload=function(){
+ API_KEY=localStorage.getItem("apiKey")||"";
+ document.getElementById("apiKeyInput").value=API_KEY;
+ drawChart();
+ showHistory();
+};
 
 function setMood(m){mood=m;}
 function setPhase(p){phase=p;}
@@ -129,6 +150,7 @@ function loadImage(e){
 
 // AI
 async function callAI(prompt){
+ if(!API_KEY){return "APIキーを入力してください";}
  try{
   const res=await fetch("https://api.openai.com/v1/chat/completions",{
    method:"POST",
@@ -158,7 +180,7 @@ function saveLog(score,text){
  localStorage.setItem("logs",JSON.stringify(logs));
 }
 
-// グラフ
+// グラフ（修正済）
 function drawChart(){
  let logs=JSON.parse(localStorage.getItem("logs")||"[]");
  if(chart) chart.destroy();
@@ -210,10 +232,6 @@ async function check(){
 
  document.getElementById("result").textContent=res;
 }
-
-// 初期
-drawChart();
-showHistory();
 </script>
 
 </body>
